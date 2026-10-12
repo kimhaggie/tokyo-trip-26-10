@@ -85,9 +85,15 @@ test('월요일 B안: 넘긴 매장 중 미방문만, 토요일 방문 매장은
   assert.equal(places.filter((p) => p === 'rose-stay-shiba-park').length, 1, '호텔 재방문 없음');
   assert.equal(places.at(-1), 'tokyo-station');
   assert.equal(r.airportLegs[0].other.place.id, 'tokyo-station');
-  // 빈 보충 목록도 정상
+  // 빈 보충 목록도 정상 — 못 본 매장 3곳은 ? 후보로 보인다
   const empty = computeRoute(day('2026-11-02'), S({ mondayPlan: 'B' }), PLACES);
   assert.ok(empty.stops.length >= 3);
+  assert.deepEqual(empty.floating.map((f) => f.place.id).filter((id) => id.startsWith('kapital-') && id !== 'kapital-ginza').sort(), ['kapital-duffle', 'kapital-legs', 'kapital-naked']);
+  // 토요일에 본 매장은 후보에도 안 나온다
+  const seen = computeRoute(day('2026-11-02'), S({ mondayPlan: 'B', visited: { 'kapital-naked': true } }), PLACES);
+  assert.ok(!seen.floating.some((f) => f.place.id === 'kapital-naked'));
+  // A안에서는 후보를 보이지 않는다
+  assert.ok(!computeRoute(day('2026-11-02'), S({ mondayPlan: 'A' }), PLACES).floating.some((f) => f.place.id === 'kapital-legs'));
 });
 
 test('월요일 미정이면 A/B를 이어 그리지 않는다', () => {
@@ -116,10 +122,19 @@ test('진보초 순서가 지도 순서에 반영', () => {
   assert.ok(cafe.indexOf('d4-milonga') < cafe.indexOf('d4-festival'));
   const books = stopIds(computeRoute(d, S({ jimbochoOrder: 'books-first' }), PLACES));
   assert.ok(books.indexOf('d4-festival') < books.indexOf('d4-milonga'));
+  // 순서 미정: 축제·밀롱가를 같은 번호의 한 구간으로 묶고 선은 축제 구역 대표 지점만 지난다
   const und = computeRoute(d, S(), PLACES);
-  assert.ok(!stopIds(und).includes('d4-milonga'));
-  assert.ok(!stopIds(und).includes('d4-return'), '미정이면 숙소 복귀 선도 잇지 않음');
-  assert.ok(!stopIds(computeRoute(d, S({ sundayDinner: 'akiyoshi' }), PLACES)).includes('d4-akiyoshi'), '진보초 순서 미정이면 저녁도 잇지 않음');
+  const fest = und.stops.find((s) => s.item.id === 'd4-festival');
+  const cafeStop = und.stops.find((s) => s.item.id === 'd4-milonga');
+  assert.ok(fest && cafeStop);
+  assert.equal(fest.label, cafeStop.label, '같은 번호');
+  const milongaXY = PM['milonga-nueva'].coordinates.join();
+  assert.ok(und.segments.every((s) => s.from.join() !== milongaXY && s.to.join() !== milongaXY), '밀롱가로는 선을 긋지 않음');
+  assert.ok(!stopIds(und).includes('d4-return'), '저녁 미정이면 숙소 복귀 선은 잇지 않음');
+  // 저녁만 정해져도 실선: 미술관 → 진보초 → 저녁 → 숙소
+  const dinnerOnly = computeRoute(d, S({ sundayDinner: 'akiyoshi' }), PLACES);
+  assert.deepEqual(stopIds(dinnerOnly).slice(-2), ['d4-akiyoshi', 'd4-return']);
+  assert.ok(dinnerOnly.segments.some((s) => s.from.join() === PM['kanda-furuhon-matsuri'].coordinates.join() && s.to.join() === PM['akiyoshi-ueno'].coordinates.join()));
 });
 
 test('Google Maps 2지점 링크 인코딩', () => {

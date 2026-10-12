@@ -165,7 +165,6 @@ export function itemStatus(item, day, state) {
     if (v === 'undecided') return 'floating';
     return v === item.choice.value ? 'active' : 'hidden';
   }
-  if (item.flexMember && state.jimbochoOrder === 'undecided') return 'floating';
   if (item.priority === 'optional') {
     if (state.selectedOptions[item.id]) return 'active';
     return state.showOptions[day.date] ? 'floating' : 'hidden';
@@ -205,6 +204,12 @@ export function computeRoute(day, state, places) {
       for (const pid of mondayKapitalForRoute(state)) {
         expanded.push({ item: { ...item, id: `${item.id}-${pid}`, placeId: pid }, status: st });
       }
+      // B안을 골랐을 때 아직 보지도 넘기지도 않은 매장은 후보(?)로 보여 준다
+      if (st === 'active') {
+        for (const pid of KAPITAL_EBISU_IDS.filter((id) => !state.visited[id] && !state.kapitalToMonday[id])) {
+          expanded.push({ item: { ...item, id: `${item.id}-${pid}`, placeId: pid, title: '에비스 KAPITAL 보충 후보' }, status: 'floating' });
+        }
+      }
       continue;
     }
     let status = itemStatus(item, day, state);
@@ -228,8 +233,10 @@ export function computeRoute(day, state, places) {
       floating.push({ item, place });
       continue;
     }
-    // 동선에 넣은 선택 일정도 본 일정과 같은 실선·번호로 그린다
-    stops.push({ item, place });
+    // 동선에 넣은 선택 일정도 본 일정과 같은 실선·번호로 그린다.
+    // 진보초 순서 미정이면 축제·밀롱가를 한 구간(group)으로 묶는다.
+    const group = item.flexMember && state.jimbochoOrder === 'undecided' ? item.flexMember : null;
+    stops.push({ item, place, group });
     lastCityStop = { item, place };
   }
 
@@ -244,9 +251,12 @@ export function computeRoute(day, state, places) {
   let n = 0;
   // 같은 건물(좌표 동일)도 한 마커로 합친다 — 예: 루미네·한큐 맨즈 유라쿠초
   const keyOf = (place) => place.coordinates.join(',');
+  let prev = null;
   for (const s of stops) {
     const isHotel = s.place.category === 'hotel';
-    const label = isHotel ? 'H' : String(++n);
+    const sameGroup = s.group && prev && prev.group === s.group;
+    const label = isHotel ? 'H' : sameGroup ? prev.label : String(++n);
+    prev = s;
     s.label = label;
     if (byPlace.has(keyOf(s.place))) {
       const m = byPlace.get(keyOf(s.place));
@@ -266,14 +276,16 @@ export function computeRoute(day, state, places) {
     markers.push(m);
   }
 
+  // 선: 묶인 구간은 첫 지점(진보초 구역 대표 지점)만 지난다
+  const points = stops.filter((s, i) => !(s.group && i > 0 && stops[i - 1].group === s.group));
   const segments = [];
-  for (let i = 1; i < stops.length; i++) {
-    const a = stops[i - 1];
-    const b = stops[i];
+  for (let i = 1; i < points.length; i++) {
+    const a = points[i - 1];
+    const b = points[i];
     if (a.place.id === b.place.id) continue;
     segments.push({ from: a.place.coordinates, to: b.place.coordinates });
   }
-  return { stops, floating, missing, markers, segments, airportLegs };
+  return { stops, points, floating, missing, markers, segments, airportLegs };
 }
 
 // B안 보충 매장 (가상의 days 없이 placeId 목록만 필요)
@@ -286,9 +298,10 @@ export { KAPITAL_EBISU_IDS };
 // 구간별 길찾기용 연속 쌍 (같은 장소 연속은 건너뜀)
 export function routeLegs(route) {
   const legs = [];
-  for (let i = 1; i < route.stops.length; i++) {
-    const a = route.stops[i - 1];
-    const b = route.stops[i];
+  const pts = route.points || route.stops;
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1];
+    const b = pts[i];
     if (a.place.id === b.place.id) continue;
     legs.push({ from: a, to: b });
   }

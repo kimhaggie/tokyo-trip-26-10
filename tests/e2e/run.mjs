@@ -69,6 +69,8 @@ for (const width of [360, 390, 1440]) {
   await page.getByRole('button', { name: 'B안 · 캐피탈 보충' }).click();
   check(await page.locator('#app').getByText('KAPITAL Legs Craftsman Store').count() >= 1, '월요일 B안에 이월 매장 없음');
   check(await page.locator('#item-d5a-tsujihan').count() === 0, 'B안인데 A안 츠지한 표시');
+  await page.getByRole('button', { name: 'Duffle with KAPITAL 월요일에 보충' }).click();
+  check(await page.getByRole('button', { name: '보충에서 빼기' }).count() === 2, '월요일 보충 버튼이 동작하지 않음');
   await page.screenshot({ path: `${OUT}flow-monday-B.png`, fullPage: true });
   // 일요일 분기
   await page.click('#tab-day-4');

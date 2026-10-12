@@ -246,10 +246,14 @@ function renderKapitalMakeup() {
     box.append(h('p', { class: 'small' }, '월요일로 넘긴 에비스 캐피탈이 없습니다. 토요일 일정에서 “월요일로 넘기기”를 누르면 여기에 모입니다.'));
   } else {
     box.append(h('p', null, '보충할 매장:'));
-    box.append(h('ul', { class: 'dots' }, ids.map((id) => h('li', null, placeName(PM[id]), ' ', ext(mapsSearchUrl(PM[id]), '지도')))));
+    box.append(h('ul', { class: 'dots' }, ids.map((id) => h('li', null, placeName(PM[id]), ' ', ext(mapsSearchUrl(PM[id]), '지도'), ' ',
+      h('button', { type: 'button', class: 'btn btn-small', onclick: () => setMapKey('kapitalToMonday', id, false) }, '보충에서 빼기')))));
   }
   const pending = kapitalUnresolved(DAYS, state);
-  if (pending.length) box.append(h('p', { class: 'small' }, `토요일에 아직 체크하지 않은 매장: ${pending.map((id) => placeName(PM[id])).join(', ')} — 자동으로 넣지 않습니다.`));
+  if (pending.length) {
+    box.append(h('p', { class: 'small', style: 'margin-top:8px' }, '토요일에 보지도 넘기지도 않은 매장 (지도에 ? 후보) — 보충할 매장만 고르세요:'));
+    box.append(h('div', { class: 'btn-row' }, pending.map((id) => h('button', { type: 'button', class: 'btn btn-small', onclick: () => setMapKey('kapitalToMonday', id, true) }, `${placeName(PM[id])} 월요일에 보충`))));
+  }
   return box;
 }
 
@@ -292,6 +296,9 @@ function renderDay(day, index) {
       ? `토요일에 넘긴 캐피탈 ${moved.length}곳 → B안이 맞습니다.`
       : pending.length ? `토요일 캐피탈 중 ${pending.length}곳이 아직 체크되지 않았습니다.` : '토요일 에비스 캐피탈을 모두 봤다면 A안.';
     ctrls.append(h('p', { class: 'choice-hint' }, hint, ' (자동으로 바꾸지 않습니다)'));
+    if (state.mondayPlan === 'B' && !moved.length) {
+      ctrls.append(h('div', { class: 'notice notice-caution' }, h('p', null, 'B안 보충 매장이 아직 없어서 동선이 비어 있어요. 아래 “못 본 에비스 KAPITAL 보충” 카드에서 보충할 매장을 고르세요.')));
+    }
   }
   const hasOptions = day.items.some((i) => i.priority === 'optional' && !i.choice);
   if (hasOptions) {
@@ -316,14 +323,16 @@ function renderDay(day, index) {
     h('span', null, h('i', { class: 'lg lg-line' }), '방문 순서 (동선에 넣은 선택 일정 포함)')));
   mapBlock.append(h('p', { class: 'map-caption' }, h('strong', null, '선은 방문 순서 연결선이며 실제 도로·철도 경로가 아닙니다.'), ' 거리·시간은 아래 구간별 길찾기로 확인하세요.'));
   // 번호가 뭉치는 구역을 위해 — 번호 목록을 누르면 그 장소로 확대
-  const chips = [];
-  const seenLabel = new Set();
+  const chipNames = new Map(); // 번호 → { 첫 아이템, 이름들 } (진보초처럼 같은 번호로 묶인 곳은 이름을 합친다)
   for (const st of route.stops) {
-    if (st.label === 'H' || seenLabel.has(st.label)) continue;
-    seenLabel.add(st.label);
-    chips.push(h('button', { type: 'button', class: 'stop-chip', onclick: () => focusOnItem(mapKey, st.item.id) },
-      h('b', null, st.label), placeName(st.place)));
+    if (st.label === 'H') continue;
+    if (!chipNames.has(st.label)) chipNames.set(st.label, { item: st.item, names: [] });
+    const c = chipNames.get(st.label);
+    const nm = st.group ? placeName(st.place).replace(/\s*\(.*\)$/, '') : placeName(st.place);
+    if (!c.names.includes(nm)) c.names.push(nm);
   }
+  const chips = [...chipNames].map(([label, c]) => h('button', { type: 'button', class: 'stop-chip', onclick: () => focusOnItem(mapKey, c.item.id) },
+    h('b', null, label), c.names.length > 1 ? `진보초 · ${c.names.join(' · ')} (순서 미정)` : c.names[0]));
   if (chips.length && mapsAvailable()) mapBlock.append(h('div', { class: 'stop-chips', 'aria-label': '지도 번호 목록 — 누르면 확대' }, chips));
   if (route.missing.length) {
     mapBlock.append(h('p', { class: 'missing-list' }, `지도 위치 확인 필요 (지도에 없음): ${[...new Set(route.missing.map((m) => placeName(m.place) || m.item.title))].join(', ')}`));
