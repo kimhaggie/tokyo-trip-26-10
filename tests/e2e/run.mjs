@@ -76,6 +76,10 @@ for (const width of [360, 390, 1440]) {
   await page.screenshot({ path: `${OUT}flow-monday.png`, fullPage: true });
   // 일요일 분기
   await page.click('#tab-day-4');
+  for (const id of ['d4-akiyoshi', 'd4-marusho']) {
+    const dashed = await page.locator(`#item-${id} .num`).evaluate((e) => e.classList.contains('opt') && e.textContent === '?');
+    check(dashed, `일요일 저녁 미정인데 ${id}가 점선 ?가 아님`);
+  }
   await page.getByRole('button', { name: '아키요시' }).first().click();
   await page.getByRole('button', { name: '책 먼저' }).click();
   check(await page.locator('#app').getByText('마루쇼 혼고산초메 — 특제 소스 야키소바').count() === 0, '아키요시 선택 후 마루쇼 표시');

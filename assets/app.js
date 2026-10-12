@@ -180,7 +180,8 @@ function renderItem(item, day, ctx) {
   const status = itemStatus(item, day, state);
   const label = ctx.labels.get(item.id);
   // 선택 일정이라도 동선에 넣었으면(active) 본 일정과 같은 모양으로 보인다
-  const isOption = (item.priority === 'optional' || item.priority === 'backup') && status !== 'active';
+  // 아직 고르지 않은 선택지(floating)는 우선순위와 상관없이 점선 ? 로 보인다 — 예: 일요일 저녁 미정
+  const isOption = status === 'floating' || ((item.priority === 'optional' || item.priority === 'backup') && status !== 'active');
   const cls = ['tl-item'];
   if (item.time && item.time.nature === 'fixed') cls.push('is-fixed');
   if (isOption) cls.push('is-option');
