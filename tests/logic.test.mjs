@@ -46,7 +46,6 @@ test('Day2: 옵션은 기본 동선에 없고, 넣으면 점선으로 들어간�
   const d = day('2026-10-30');
   const base = computeRoute(d, S(), PLACES);
   assert.ok(!stopIds(base).includes('d2-opt-kapital-ginza'));
-  assert.ok(base.segments.every((s) => !s.dashed));
   assert.equal(base.floating.length, 0, '옵션 표시 꺼짐');
   const shown = computeRoute(d, S({ showOptions: { '2026-10-30': true } }), PLACES);
   assert.ok(shown.floating.length >= 6);
@@ -54,7 +53,10 @@ test('Day2: 옵션은 기본 동선에 없고, 넣으면 점선으로 들어간�
   const ids = stopIds(sel);
   assert.ok(ids.indexOf('d2-lambre') < ids.indexOf('d2-opt-kapital-ginza'));
   assert.ok(ids.indexOf('d2-opt-kapital-ginza') < ids.indexOf('d2-steven-alan'));
-  assert.ok(sel.segments.some((s) => s.dashed));
+  const opt = sel.markers.find((m) => m.place.id === 'kapital-ginza');
+  assert.equal(opt.kind, 'core', '동선에 넣은 옵션은 본 일정과 같은 번호 핀');
+  assert.equal(opt.labels[0], '3');
+  assert.ok(sel.segments.every((s) => !('dashed' in s)), '구간은 모두 실선');
   assert.deepEqual(ids.slice(-3), ['d2-kawakamian', 'd2-bluenote', 'd2-return']);
 });
 

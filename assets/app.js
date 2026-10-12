@@ -179,7 +179,8 @@ function renderItem(item, day, ctx) {
   const place = item.placeId ? PM[item.placeId] : null;
   const status = itemStatus(item, day, state);
   const label = ctx.labels.get(item.id);
-  const isOption = item.priority === 'optional' || item.priority === 'backup';
+  // 선택 일정이라도 동선에 넣었으면(active) 본 일정과 같은 모양으로 보인다
+  const isOption = (item.priority === 'optional' || item.priority === 'backup') && status !== 'active';
   const cls = ['tl-item'];
   if (item.time && item.time.nature === 'fixed') cls.push('is-fixed');
   if (isOption) cls.push('is-option');
@@ -310,11 +311,9 @@ function renderDay(day, index) {
   }
   mapBlock.append(h('div', { class: 'legend' },
     h('span', null, h('i', { class: 'lg lg-hotel' }, 'H'), '숙소'),
-    h('span', null, h('i', { class: 'lg lg-core' }, '1'), '본 일정 순서'),
-    h('span', null, h('i', { class: 'lg lg-option' }, '2'), '넣은 선택 일정'),
+    h('span', null, h('i', { class: 'lg lg-core' }, '1'), '방문 순서 번호'),
     h('span', null, h('i', { class: 'lg lg-float' }, '?'), '선택 전 (연결 안 함)'),
-    h('span', null, h('i', { class: 'lg lg-line' }), '방문 순서'),
-    h('span', null, h('i', { class: 'lg lg-dash' }), '선택 일정 구간')));
+    h('span', null, h('i', { class: 'lg lg-line' }), '방문 순서 (동선에 넣은 선택 일정 포함)')));
   mapBlock.append(h('p', { class: 'map-caption' }, h('strong', null, '선은 방문 순서 연결선이며 실제 도로·철도 경로가 아닙니다.'), ' 거리·시간은 아래 구간별 길찾기로 확인하세요.'));
   // 번호가 뭉치는 구역을 위해 — 번호 목록을 누르면 그 장소로 확대
   const chips = [];
@@ -322,7 +321,7 @@ function renderDay(day, index) {
   for (const st of route.stops) {
     if (st.label === 'H' || seenLabel.has(st.label)) continue;
     seenLabel.add(st.label);
-    chips.push(h('button', { type: 'button', class: `stop-chip${st.dashed ? ' opt' : ''}`, onclick: () => focusOnItem(mapKey, st.item.id) },
+    chips.push(h('button', { type: 'button', class: 'stop-chip', onclick: () => focusOnItem(mapKey, st.item.id) },
       h('b', null, st.label), placeName(st.place)));
   }
   if (chips.length && mapsAvailable()) mapBlock.append(h('div', { class: 'stop-chips', 'aria-label': '지도 번호 목록 — 누르면 확대' }, chips));

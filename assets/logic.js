@@ -228,8 +228,8 @@ export function computeRoute(day, state, places) {
       floating.push({ item, place });
       continue;
     }
-    const dashed = item.priority !== 'core';
-    stops.push({ item, place, dashed });
+    // 동선에 넣은 선택 일정도 본 일정과 같은 실선·번호로 그린다
+    stops.push({ item, place });
     lastCityStop = { item, place };
   }
 
@@ -253,7 +253,7 @@ export function computeRoute(day, state, places) {
       if (!isHotel) m.labels.push(label);
       m.items.push(s.item);
     } else {
-      const m = { place: s.place, labels: isHotel ? ['H'] : [label], items: [s.item], kind: isHotel ? 'hotel' : (s.dashed ? 'option' : 'core') };
+      const m = { place: s.place, labels: isHotel ? ['H'] : [label], items: [s.item], kind: isHotel ? 'hotel' : 'core' };
       byPlace.set(keyOf(s.place), m);
       markers.push(m);
     }
@@ -271,7 +271,7 @@ export function computeRoute(day, state, places) {
     const a = stops[i - 1];
     const b = stops[i];
     if (a.place.id === b.place.id) continue;
-    segments.push({ from: a.place.coordinates, to: b.place.coordinates, dashed: a.dashed || b.dashed });
+    segments.push({ from: a.place.coordinates, to: b.place.coordinates });
   }
   return { stops, floating, missing, markers, segments, airportLegs };
 }

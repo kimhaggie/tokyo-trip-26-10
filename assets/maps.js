@@ -101,9 +101,7 @@ export function drawRoute(key, route, { onSelect } = {}) {
   inst.layer.clearLayers();
   const bounds = [];
   for (const seg of route.segments) {
-    L.polyline([seg.from, seg.to], seg.dashed
-      ? { color: '#3b4675', weight: 2.5, dashArray: '6 6', opacity: 0.9 }
-      : { color: '#a8461f', weight: 3, opacity: 0.85 }).addTo(inst.layer);
+    L.polyline([seg.from, seg.to], { color: '#a8461f', weight: 3, opacity: 0.85 }).addTo(inst.layer);
   }
   inst.markerById = new Map();
   for (const m of route.markers) {
