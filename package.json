@@ -1,0 +1,21 @@
+{
+  "name": "tokyo-trip-26-10",
+  "version": "1.0.0",
+  "private": true,
+  "description": "도쿄 4박 5일 여행 노트 (2026.10.29–11.02) — 정적 사이트",
+  "type": "module",
+  "scripts": {
+    "validate": "node scripts/validate-data.mjs",
+    "test": "node scripts/validate-data.mjs && node --test \"tests/*.test.mjs\"",
+    "build": "node scripts/build.mjs",
+    "serve": "node scripts/serve.mjs",
+    "test:e2e": "node scripts/build.mjs && node tests/e2e/run.mjs"
+  },
+  "devDependencies": {
+    "leaflet": "1.9.4",
+    "playwright-core": "1.64.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
