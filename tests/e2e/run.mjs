@@ -63,15 +63,17 @@ for (const width of [360, 390, 1440]) {
   await page.locator('#item-d3-kapital-legs').getByRole('button', { name: '월요일로 넘기기' }).click();
   await page.getByRole('button', { name: '간다' }).click();
   await page.reload({ waitUntil: 'networkidle' });
-  check(await page.getByText('월요일 B안으로 넘김').count() === 1, '이월 상태가 새로고침 후 유지되지 않음');
+  check(await page.getByText('토요일 동선에서 뺌 — 월요일 옵션에서 고를 수 있어요').count() === 1, '이월 상태가 새로고침 후 유지되지 않음');
   check(await page.getByRole('button', { name: '간다', pressed: true }).count() === 1, '아트 나이트 선택 유지 안 됨');
   await page.click('#tab-day-5');
-  await page.getByRole('button', { name: 'B안 · 캐피탈 보충' }).click();
-  check(await page.locator('#app').getByText('KAPITAL Legs Craftsman Store').count() >= 1, '월요일 B안에 이월 매장 없음');
-  check(await page.locator('#item-d5a-tsujihan').count() === 0, 'B안인데 A안 츠지한 표시');
-  await page.getByRole('button', { name: 'Duffle with KAPITAL 월요일에 보충' }).click();
-  check(await page.getByRole('button', { name: '보충에서 빼기' }).count() === 2, '월요일 보충 버튼이 동작하지 않음');
-  await page.screenshot({ path: `${OUT}flow-monday-B.png`, fullPage: true });
+  const monPins = () => page.$$eval('#app .leaflet-marker-icon .pin', (e) => e.map((x) => x.textContent));
+  const before = await monPins();
+  check(!before.some((t) => t === '2' || t === '?'), `월요일 기본은 옵션 없이 시작해야 함: ${before}`);
+  await page.locator('#item-d5-tsujihan').getByLabel('동선에 넣기').check();
+  await page.locator('#item-d5-kapital-legs').getByLabel('동선에 넣기').check();
+  const after = await monPins();
+  check(after.includes('2') && after.includes('3'), `월요일 옵션을 넣어도 번호가 생기지 않음: ${after}`);
+  await page.screenshot({ path: `${OUT}flow-monday.png`, fullPage: true });
   // 일요일 분기
   await page.click('#tab-day-4');
   await page.getByRole('button', { name: '아키요시' }).first().click();

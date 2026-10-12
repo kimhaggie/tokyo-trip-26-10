@@ -223,16 +223,18 @@ export const DAYS = [
   },
   {
     date: '2026-11-02',
-    title: '체크아웃 · 도쿄역 · 긴자/에비스 보충 · 출국',
-    summary: '체크아웃 → 도쿄역 짐 보관 → A안(츠지한·긴자) 또는 B안(캐피탈 보충) → N\'EX → 나리타 18:55',
-    areas: ['도쿄역', '니혼바시', '긴자', '에비스', '나리타'],
-    route: '숙소 체크아웃 → 도쿄역 짐 보관 → A/B안 → 도쿄역 짐 회수 → N\'EX → 나리타',
+    title: '체크아웃 · 도쿄역 · 니혼바시/에비스/긴자 옵션 · 출국',
+    summary: '체크아웃 → 도쿄역 짐 보관 → 넣고 싶은 옵션만 (츠지한·에비스 캐피탈·긴자) → 짐 회수 → N\'EX → 나리타 18:55',
+    areas: ['도쿄역', '니혼바시', '에비스', '긴자', '나리타'],
+    route: '숙소 체크아웃 → 도쿄역 짐 보관 → [옵션: 츠지한 → 에비스 캐피탈 → 유니클로 → 캐피탈 긴자 → 이토야] → 도쿄역 짐 회수 → N\'EX → 나리타',
     notes: [
       '18:55 나리타 출발 항공편이 최우선.',
       '호텔로 돌아가지 않는다 — 짐은 도쿄역에서 회수.',
-      '월요일 킷사텐 없음 · 카파바시는 기본 동선에 넣지 않는 낮은 우선순위 서브.',
-      '쇼핑은 대략 14:30~15:00에 끝낸다. 마지막 지역·짐 위치에 따라 앞당긴다.',
-      '“도쿄에서 16시 출발”은 16시에 매장에서 나온다는 뜻이 아니다.',
+      '고정은 짐 보관·회수·N\'EX뿐. 나머지는 모두 옵션 — 갈 곳만 “동선에 넣기”.',
+      '옵션 순서: 반대 방향인 에비스를 앞에, 도쿄역에서 가까운 긴자(캐피탈 긴자·이토야)를 마지막에 — 마지막 장소가 짐과 가까워 시간이 모자라면 바로 접고 짐을 찾으러 갈 수 있다.',
+      '에비스는 도쿄역과 반대 방향이라 왕복 이동이 크다. 이동 시간은 구간별 길찾기로 확인.',
+      '월요일 킷사텐 없음 · 카파바시는 넣지 않는 낮은 우선순위 서브.',
+      '쇼핑은 대략 14:30~15:00에 끝낸다. “도쿄에서 16시 출발”은 16시에 매장에서 나온다는 뜻이 아니다.',
     ],
     warnings: [
       { id: 'w-flight', level: 'important', text: '국제선은 출발 최소 2시간 전 공항 도착 안내 — 16:55보다 여유 있게 도착하는 열차를 우선 확인.', sourceIds: ['src-narita-dep'] },
@@ -241,16 +243,14 @@ export const DAYS = [
     items: [
       { id: 'd5-checkout', placeId: 'rose-stay-shiba-park', kind: 'hotel', title: '체크아웃 (짐을 가지고 나옴)', time: { text: '오전', nature: 'flexible' }, priority: 'core', reservation: { status: 'not_applicable' }, memo: [] },
       { id: 'd5-luggage-drop', placeId: 'tokyo-station', kind: 'transit', luggage: 'drop', title: '도쿄역 짐 보관', time: { text: '오전', nature: 'flexible' }, priority: 'core', reservation: { status: 'not_reserved', note: '방식·장소 미정' }, memo: ['코인로커가 비어 있다고 가정하지 않음', '맡긴 뒤 위치를 준비 탭 메모에 적어 두기'] },
-      // A안 — 토요일에 에비스 캐피탈을 다 봤다면
-      { id: 'd5a-tsujihan', placeId: 'tsujihan-nihonbashi', kind: 'meal', meal: 'lunch', title: '츠지한 니혼바시 본점 — 해산물 덮밥', time: { text: '이른 점심 (개점 시간 확인)', nature: 'target' }, priority: 'core', variant: 'A', reservation: { status: 'walk_in', note: '현장 대기 · 예약 없음' }, memo: ['마지막에 도미 육수', '대기가 길면 생략 가능 — 출국일을 줄서기로 채우지 않음'] },
-      { id: 'd5a-itoya', placeId: 'itoya-ginza', kind: 'shop', title: '긴자 이토야 — 문구', time: { text: '점심 후', nature: 'flexible' }, priority: 'core', variant: 'A', reservation: { status: 'not_applicable' }, shopping: { purpose: '문구 구경 (금요일에서 옮김)', mondayOk: true }, memo: ['다른 Itoya 지점이 아님'] },
-      { id: 'd5a-kapital-ginza', placeId: 'kapital-ginza', kind: 'shop', title: 'KAPITAL 긴자 (남았다면)', time: { text: '시간이 남으면', nature: 'flexible' }, priority: 'optional', variant: 'A', optionGroup: 'mon-ginza', reservation: { status: 'not_applicable' }, shopping: { purpose: '금요일에 못 봤고 아직 관심 있을 때', mondayOk: true }, memo: ['정오 개점이라는 기존 안내 — 카드의 영업시간 확인'] },
-      { id: 'd5a-uniqlo', placeId: 'uniqlo-ginza', kind: 'shop', title: '유니클로 긴자 (남았다면)', time: { text: '시간이 남으면', nature: 'flexible' }, priority: 'optional', variant: 'A', optionGroup: 'mon-ginza', reservation: { status: 'not_applicable' }, shopping: { purpose: '금요일에 못 봤고 아직 관심 있을 때', mondayOk: true }, memo: ['의무 방문 아님'] },
-      // B안 — 토요일에 에비스 캐피탈을 못 봤다면 (보충 매장은 상태에서 계산)
-      { id: 'd5b-kapital', placeId: null, kind: 'flex', kapitalMakeup: true, title: '못 본 에비스 KAPITAL 보충', time: { text: '오전~', nature: 'flexible' }, priority: 'core', variant: 'B', reservation: { status: 'not_applicable' }, memo: ['토요일에 “월요일로 넘기기”한 매장만 들어간다', '토요일에 본 매장은 다시 넣지 않는다'] },
-      { id: 'd5b-lunch', placeId: null, kind: 'meal', meal: 'lunch', title: '점심은 동선에서', time: { text: '점심', nature: 'flexible' }, priority: 'core', variant: 'B', reservation: { status: 'not_applicable' }, memo: ['츠지한은 포기해도 된다'] },
-      { id: 'd5b-itoya', placeId: 'itoya-ginza', kind: 'shop', title: '긴자 이토야 (시간 남으면)', time: { text: '시간이 남으면', nature: 'flexible' }, priority: 'optional', variant: 'B', optionGroup: 'mon-ginza-b', reservation: { status: 'not_applicable' }, shopping: { purpose: '문구 구경', mondayOk: true }, memo: [] },
-      { id: 'd5b-kapital-ginza', placeId: 'kapital-ginza', kind: 'shop', title: 'KAPITAL 긴자 (시간 남으면)', time: { text: '시간이 남으면', nature: 'flexible' }, priority: 'optional', variant: 'B', optionGroup: 'mon-ginza-b', reservation: { status: 'not_applicable' }, shopping: { purpose: '긴자 캐피탈은 에비스 보충과 별개', mondayOk: true }, memo: ['에비스 캐피탈 보충으로 자동 완료 처리하지 않음'] },
+      // 옵션 — 모두 꺼진 상태로 시작. 순서는 개점 시간·방향 기준 (츠지한 10시 → 에비스 11시 → 캐피탈 긴자 12시 → 도쿄역 근처로 마무리)
+      { id: 'd5-tsujihan', placeId: 'tsujihan-nihonbashi', kind: 'meal', meal: 'lunch', title: '츠지한 니혼바시 본점 — 해산물 덮밥', time: { text: '10:00 개점 · 이른 점심', nature: 'target' }, priority: 'optional', optionGroup: 'mon-options', reservation: { status: 'walk_in', note: '현장 대기 · 예약 없음' }, memo: ['마지막에 도미 육수', '대기가 길면 생략 — 출국일을 줄서기로 채우지 않음', '넣지 않으면 점심은 동선에서'] },
+      { id: 'd5-kapital-naked', placeId: 'kapital-naked', kind: 'shop', title: 'KAPITAL TOKYO NAKED STORE (에비스)', time: { text: '11:00 개점', nature: 'flexible' }, priority: 'optional', optionGroup: 'mon-options', mondayKapital: true, reservation: { status: 'not_applicable' }, shopping: { purpose: '토요일에 못 봤거나 다시 보고 싶을 때', mondayOk: true }, memo: ['토요일 상태와 상관없이 고를 수 있음'] },
+      { id: 'd5-kapital-legs', placeId: 'kapital-legs', kind: 'shop', title: 'KAPITAL Legs Craftsman Store (에비스)', time: { text: '11:00 개점', nature: 'flexible' }, priority: 'optional', optionGroup: 'mon-options', mondayKapital: true, reservation: { status: 'not_applicable' }, shopping: { purpose: '토요일에 못 봤거나 다시 보고 싶을 때', mondayOk: true }, memo: [] },
+      { id: 'd5-kapital-duffle', placeId: 'kapital-duffle', kind: 'shop', title: 'Duffle with KAPITAL (에비스)', time: { text: '11:00 개점', nature: 'flexible' }, priority: 'optional', optionGroup: 'mon-options', mondayKapital: true, reservation: { status: 'not_applicable' }, shopping: { purpose: '토요일에 못 봤거나 다시 보고 싶을 때', mondayOk: true }, memo: [] },
+      { id: 'd5-uniqlo', placeId: 'uniqlo-ginza', kind: 'shop', title: '유니클로 긴자', time: { text: '11:00 개점', nature: 'flexible' }, priority: 'optional', optionGroup: 'mon-options', reservation: { status: 'not_applicable' }, shopping: { purpose: '꼭 볼 상품이 있을 때만', mondayOk: true }, memo: [] },
+      { id: 'd5-kapital-ginza', placeId: 'kapital-ginza', kind: 'shop', title: 'KAPITAL 긴자 (센추리 데님)', time: { text: '12:00 개점', nature: 'flexible' }, priority: 'optional', optionGroup: 'mon-options', reservation: { status: 'not_applicable' }, shopping: { purpose: '금요일에 못 봤고 아직 관심 있을 때', mondayOk: true }, memo: ['에비스 캐피탈과 다른 매장 — 도쿄역에서 가까움'] },
+      { id: 'd5-itoya', placeId: 'itoya-ginza', kind: 'shop', title: '긴자 이토야 — 문구', time: { text: '마지막 (도쿄역 근처)', nature: 'flexible' }, priority: 'optional', optionGroup: 'mon-options', reservation: { status: 'not_applicable' }, shopping: { purpose: '문구 구경 (금요일에서 옮김)', mondayOk: true }, memo: ['다른 Itoya 지점이 아님', '긴자 1~2초메 — 끝나고 바로 도쿄역으로'] },
       { id: 'd5-luggage-pick', placeId: 'tokyo-station', kind: 'transit', luggage: 'pick', title: '도쿄역 짐 회수', time: { text: '쇼핑 종료 14:30~15:00 후', nature: 'target' }, priority: 'core', reservation: { status: 'not_applicable' }, memo: ['호텔에 다시 가지 않음'] },
       { id: 'd5-nex', placeId: 'tokyo-station', kind: 'transit', title: "N'EX 탑승 → 나리타", time: { text: '15:30~16:00 전후 탑승 목표 (후보 범위)', at: '2026-11-02T15:30:00+09:00', nature: 'target' }, priority: 'core', reservation: { status: 'not_reserved', note: '여행 중 예약 예정 — 열차 미정' }, memo: ['정확한 열차 번호·시간·운임·승강장은 예약할 때 확인', '16:55보다 여유 있게 공항에 닿는 편 우선'] },
       { id: 'd5-depart', placeId: 'narita-airport', kind: 'airport', title: '나리타공항 출국', time: { text: '18:55 출발', at: '2026-11-02T18:55:00+09:00', nature: 'fixed' }, priority: 'core', reservation: { status: 'not_applicable' }, memo: ['항공사·편명·터미널 미제공'] },
@@ -278,15 +278,6 @@ export const CHOICES = {
     ],
     default: 'undecided',
   },
-  mondayPlan: {
-    label: '월요일 계획',
-    options: [
-      { value: 'undecided', label: '미정' },
-      { value: 'A', label: 'A안 · 츠지한·긴자' },
-      { value: 'B', label: 'B안 · 캐피탈 보충' },
-    ],
-    default: 'undecided',
-  },
   artNight: {
     label: '아트 나이트',
     options: [
@@ -302,8 +293,7 @@ export const OPTION_GROUPS = {
   'fri-ginza': { label: '긴자에서 시간이 남을 때', when: '람브르 이후, 유라쿠초로 가기 전에 판단', note: '옵션을 넣으면 뒤 시간이 밀린다.' },
   'fri-cafe': { label: '시부야에서 커피가 당기고 자리가 있을 때', when: '시부야 → 아오야마 이동 중 위치에 맞춰', note: '둘 중 하나 또는 둘 다 생략.' },
   'fri-aoyama': { label: '아오야마에서 저녁 전 시간이 남을 때', when: '18:30 예약 전', note: '예약을 밀면서까지 전부 가지 않는다.' },
-  'mon-ginza': { label: '긴자에서 남은 선택지 (A안)', when: '이토야 후 시간이 남으면', note: '둘 다 의무 방문 아님.' },
-  'mon-ginza-b': { label: '시간 남으면 (B안)', when: '캐피탈 보충 후', note: '' },
+  'mon-options': { label: '월요일 옵션 — 갈 곳만 동선에 넣기', when: '짐을 맡긴 뒤 · 쇼핑은 14:30~15:00 마무리', note: '전부 넣으면 빠듯하다. 츠지한 대기 등으로 밀리면 반대 방향인 에비스부터 빼는 것이 안전하다.' },
 };
 
 // 본 일정에서 제외한 것 — 기본 일정에 다시 들어오면 안 된다 (데이터 검증에서 확인).
@@ -315,7 +305,7 @@ export const EXCLUDED = [
   { id: 'ex-meals', name: '돈코츠 라멘 · 스시 · 나폴리탄', reason: '별도 식사 슬롯 없음' },
   { id: 'ex-events', name: '도쿄타워 할로윈 · 이케부쿠로 코스프레 · DESIGNART AUTOBAHN · 클럽 행사', reason: '끌리지 않음' },
   { id: 'ex-monday-kissa', name: '월요일 킷사텐', reason: '제외' },
-  { id: 'ex-kappabashi', name: '카파바시', reason: '낮은 우선순위 서브 — 기본 A/B 동선에 넣지 않음' },
+  { id: 'ex-kappabashi', name: '카파바시', reason: '낮은 우선순위 서브 — 월요일 옵션에도 넣지 않음' },
   { id: 'ex-tekka-alt', name: 'Tekka 대체 식당 (후지야·코빈초 등)', reason: '선택되지 않음' },
   { id: 'ex-haneda', name: '하네다', reason: '도착·출국 모두 나리타' },
 ];

@@ -4,7 +4,7 @@ import { SOURCES, TAX_FREE_NOTE } from '../data/sources.js';
 import {
   computeRoute, itemStatus, orderedItems, placeMap, hasCoords, formatDateKo, weekdayKo,
   mapsSearchUrl, mapsDirectionsUrl, routeLegs, currentPlanItem, shoppingEntries, saturdayShoppingCount,
-  mealTable, jimbochoWarnings, mondayKapitalForRoute, kapitalUnresolved, KAPITAL_EBISU_IDS,
+  mealTable, jimbochoWarnings, KAPITAL_EBISU_IDS,
   exportPayload, parseImport, defaultState,
 } from './logic.js';
 import { loadState, saveState, clearState, storageStatus } from './state.js';
@@ -227,7 +227,6 @@ function renderItem(item, day, ctx) {
       card.append(det);
     }
   }
-  if (item.kapitalMakeup) card.append(renderKapitalMakeup());
   if (item.flexBlock === 'jimbocho') {
     for (const w of jimbochoWarnings(state, new Date())) card.append(h('div', { class: 'notice notice-caution' }, w));
     card.append(segmented('jimbochoOrder'));
@@ -237,24 +236,6 @@ function renderItem(item, day, ctx) {
     h('div', { class: 'tl-time' }, item.time ? item.time.text : ''),
     card);
   return li;
-}
-
-function renderKapitalMakeup() {
-  const ids = mondayKapitalForRoute(state);
-  const box = h('div', { class: 'controls', style: 'display:block' });
-  if (!ids.length) {
-    box.append(h('p', { class: 'small' }, '월요일로 넘긴 에비스 캐피탈이 없습니다. 토요일 일정에서 “월요일로 넘기기”를 누르면 여기에 모입니다.'));
-  } else {
-    box.append(h('p', null, '보충할 매장:'));
-    box.append(h('ul', { class: 'dots' }, ids.map((id) => h('li', null, placeName(PM[id]), ' ', ext(mapsSearchUrl(PM[id]), '지도'), ' ',
-      h('button', { type: 'button', class: 'btn btn-small', onclick: () => setMapKey('kapitalToMonday', id, false) }, '보충에서 빼기')))));
-  }
-  const pending = kapitalUnresolved(DAYS, state);
-  if (pending.length) {
-    box.append(h('p', { class: 'small', style: 'margin-top:8px' }, '토요일에 보지도 넘기지도 않은 매장 (지도에 ? 후보) — 보충할 매장만 고르세요:'));
-    box.append(h('div', { class: 'btn-row' }, pending.map((id) => h('button', { type: 'button', class: 'btn btn-small', onclick: () => setMapKey('kapitalToMonday', id, true) }, `${placeName(PM[id])} 월요일에 보충`))));
-  }
-  return box;
 }
 
 function legRow(leg) {
@@ -289,15 +270,11 @@ function renderDay(day, index) {
   if (day.date === '2026-10-31') ctrls.append(segmented('artNight'));
   if (day.date === '2026-11-01') ctrls.append(segmented('sundayDinner'));
   if (day.date === '2026-11-02') {
-    ctrls.append(segmented('mondayPlan'));
-    const pending = kapitalUnresolved(DAYS, state);
-    const moved = mondayKapitalForRoute(state);
-    const hint = moved.length
-      ? `토요일에 넘긴 캐피탈 ${moved.length}곳 → B안이 맞습니다.`
-      : pending.length ? `토요일 캐피탈 중 ${pending.length}곳이 아직 체크되지 않았습니다.` : '토요일 에비스 캐피탈을 모두 봤다면 A안.';
-    ctrls.append(h('p', { class: 'choice-hint' }, hint, ' (자동으로 바꾸지 않습니다)'));
-    if (state.mondayPlan === 'B' && !moved.length) {
-      ctrls.append(h('div', { class: 'notice notice-caution' }, h('p', null, 'B안 보충 매장이 아직 없어서 동선이 비어 있어요. 아래 “못 본 에비스 KAPITAL 보충” 카드에서 보충할 매장을 고르세요.')));
+    const moved = KAPITAL_EBISU_IDS.filter((id) => state.kapitalToMonday[id]);
+    const seen = KAPITAL_EBISU_IDS.filter((id) => state.visited[id]);
+    if (moved.length || seen.length) {
+      ctrls.append(h('p', { class: 'choice-hint' },
+        `토요일 에비스 캐피탈 — 넘김: ${moved.map((id) => placeName(PM[id])).join(', ') || '없음'} · 방문 완료: ${seen.map((id) => placeName(PM[id])).join(', ') || '없음'} (참고용 — 월요일 옵션은 직접 고릅니다)`));
     }
   }
   const hasOptions = day.items.some((i) => i.priority === 'optional' && !i.choice);
@@ -331,8 +308,15 @@ function renderDay(day, index) {
     const nm = st.group ? placeName(st.place).replace(/\s*\(.*\)$/, '') : placeName(st.place);
     if (!c.names.includes(nm)) c.names.push(nm);
   }
-  const chips = [...chipNames].map(([label, c]) => h('button', { type: 'button', class: 'stop-chip', onclick: () => focusOnItem(mapKey, c.item.id) },
-    h('b', null, label), c.names.length > 1 ? `진보초 · ${c.names.join(' · ')} (순서 미정)` : c.names[0]));
+  // 같은 장소(도쿄역 짐 보관·회수·N'EX)는 번호를 모아 한 칸으로
+  const merged = [];
+  for (const [label, c] of chipNames) {
+    const text = c.names.length > 1 ? `진보초 · ${c.names.join(' · ')} (순서 미정)` : c.names[0];
+    const same = merged.find((m) => m.text === text && c.names.length === 1);
+    if (same) same.labels.push(label); else merged.push({ labels: [label], text, item: c.item });
+  }
+  const chips = merged.map((m) => h('button', { type: 'button', class: 'stop-chip', onclick: () => focusOnItem(mapKey, m.item.id) },
+    h('b', null, m.labels.join('·')), m.text));
   if (chips.length && mapsAvailable()) mapBlock.append(h('div', { class: 'stop-chips', 'aria-label': '지도 번호 목록 — 누르면 확대' }, chips));
   if (route.missing.length) {
     mapBlock.append(h('p', { class: 'missing-list' }, `지도 위치 확인 필요 (지도에 없음): ${[...new Set(route.missing.map((m) => placeName(m.place) || m.item.title))].join(', ')}`));
@@ -377,15 +361,13 @@ function renderTimeline(day, route, ctx) {
   for (const leg of legs) legAfter.set(leg.from.item.id, leg);
   const ol = h('ol', { class: 'timeline', 'aria-label': `${formatDateKo(day.date)} 일정` });
   const items = orderedItems(day, state);
-  const isMonday = day.date === '2026-11-02';
 
   const pushItem = (target, item) => {
     const st = itemStatus(item, day, state);
     if (item.choice && st === 'hidden') return;
-    if (isMonday && item.variant && st === 'hidden') return;
     if (item.kapitalEbisu && state.kapitalToMonday[item.placeId]) {
       target.append(h('li', { class: 'tl-item is-option' }, h('div', { class: 'tl-time' }, '→ 월'),
-        h('div', { class: 'tl-card' }, h('div', { class: 'tl-name' }, item.title), h('p', { class: 'small' }, '월요일 B안으로 넘김'), h('div', { class: 'controls' }, kapitalMoveButton(item)))));
+        h('div', { class: 'tl-card' }, h('div', { class: 'tl-name' }, item.title), h('p', { class: 'small' }, '토요일 동선에서 뺌 — 월요일 옵션에서 고를 수 있어요'), h('div', { class: 'controls' }, kapitalMoveButton(item)))));
       return;
     }
     target.append(renderItem(item, day, ctx));
@@ -400,7 +382,6 @@ function renderTimeline(day, route, ctx) {
       const g = item.optionGroup;
       const groupItems = [];
       while (i < items.length && items[i].optionGroup === g) { groupItems.push(items[i]); i++; }
-      if (isMonday && groupItems[0].variant && itemStatus(groupItems[0], day, state) === 'hidden') continue;
       const meta = OPTION_GROUPS[g] || {};
       const box = h('li', { class: 'option-group' },
         h('div', { class: 'option-group-title' }, `선택 · ${meta.label || ''}`),
@@ -409,24 +390,6 @@ function renderTimeline(day, route, ctx) {
       for (const gi of groupItems) pushItem(inner, gi);
       box.append(inner);
       ol.append(box);
-      continue;
-    }
-    if (isMonday && item.variant && state.mondayPlan === 'undecided') {
-      const v = item.variant;
-      const sec = h('li', { class: 'option-group' }, h('div', { class: 'option-group-title' }, v === 'A' ? 'A안 — 토요일 에비스 캐피탈을 다 봤다면' : 'B안 — 토요일 에비스 캐피탈을 못 봤다면'),
-        h('div', { class: 'option-group-when' }, '대안입니다. 둘을 이어서 하는 일정이 아닙니다.'));
-      const inner = h('ol', { class: 'timeline', style: 'margin-top:8px' });
-      while (i < items.length && items[i].variant === v) {
-        const it = items[i];
-        if (it.optionGroup) {
-          const meta = OPTION_GROUPS[it.optionGroup] || {};
-          inner.append(h('li', { class: 'small option-sub' }, `선택 · ${meta.label || ''}`));
-        }
-        inner.append(renderItem(it, day, ctx));
-        i++;
-      }
-      sec.append(inner);
-      ol.append(sec);
       continue;
     }
     pushItem(ol, item);
@@ -557,7 +520,7 @@ function renderShopping() {
     h('div', { class: 'shop-purpose' }, '볼 곳: ', w.placeIds.map((id) => placeName(PM[id])).join(', ')),
     h('label', { class: 'toggle', for: `p-${w.id}` }, h('input', { type: 'checkbox', id: `p-${w.id}`, checked: !!state.purchased[w.id], onchange: (e) => setMapKey('purchased', w.id, e.target.checked) }), '구매 완료')))));
 
-  let entries = shoppingEntries(DAYS, state).filter((e) => !(e.item.variant && state.mondayPlan !== 'undecided' && state.mondayPlan !== e.item.variant));
+  let entries = shoppingEntries(DAYS, state);
   const prioRank = (e) => (e.item.important ? 0 : e.item.priority === 'core' ? 1 : e.item.priority === 'optional' ? 2 : 3);
   let groups;
   if (shopSort === 'area') {
@@ -594,7 +557,6 @@ function shopRow({ day, item }) {
   const tags = [];
   if (item.important) tags.push(badge('꼭 방문', 'b-important'));
   else tags.push(badge(...PRIORITY_LABEL[item.priority]));
-  if (item.variant) tags.push(badge(`${item.variant}안`, 'b-monday'));
   if (moved) tags.push(badge('월요일로 넘김', 'b-monday'));
   else if (item.shopping && item.shopping.mondayOk && day.date !== '2026-11-02') tags.push(badge('월요일로 넘길 수 있음', 'b-monday'));
   if (done) tags.push(badge('방문 완료', 'b-visited'));
@@ -620,6 +582,7 @@ function renderMeals() {
   const cell = (arr, slot, date) => {
     if (date === '2026-10-29' && slot === 'lunch') return h('span', { class: 'sub' }, '도쿄 점심 없음 (비행)');
     if (date === '2026-11-02' && slot === 'cafe') return h('span', { class: 'sub' }, '별도 킷사텐 없음');
+    if (date === '2026-11-02' && slot === 'lunch' && !arr.some((x) => x.status === 'active')) return h('span', { class: 'sub' }, '점심은 동선에서 (츠지한은 월요일 옵션)');
     if (date === '2026-10-29' && slot === 'cafe') return h('span', { class: 'sub' }, '—');
     if (!arr.length) return h('span', { class: 'sub' }, '—');
     const floating = arr.filter((x) => x.status === 'floating');
@@ -628,7 +591,7 @@ function renderMeals() {
       active.map(({ item }) => h('div', null, item.title.split(' — ')[0], item.reservation && item.reservation.status === 'confirmed' ? [' ', badge(`예약 ${item.time.text}`, 'b-confirmed')] : null,
         item.priority === 'optional' ? [' ', badge('선택', 'b-optional')] : null,
         item.title.includes(' — ') ? h('span', { class: 'sub' }, item.title.split(' — ')[1]) : null)),
-      floating.length ? h('div', null, h('span', { class: 'sub' }, date === '2026-11-01' && slot === 'dinner' ? '하나만 (미정):' : date === '2026-11-02' ? '계획 미정 — 후보:' : floating.every((x) => x.item.flexMember) ? '본 일정 · 진보초 순서 미정:' : '선택:'), floating.map(({ item }) => h('div', null, '· ', item.title.split(' — ')[0], item.variant ? ` (${item.variant}안)` : ''))) : null);
+      floating.length ? h('div', null, h('span', { class: 'sub' }, date === '2026-11-01' && slot === 'dinner' ? '하나만 (미정):' : date === '2026-11-02' ? '옵션 (아직 안 넣음):' : floating.every((x) => x.item.flexMember) ? '본 일정 · 진보초 순서 미정:' : '선택:'), floating.map(({ item }) => h('div', null, '· ', item.title.split(' — ')[0], item.variant ? ` (${item.variant}안)` : ''))) : null);
   };
   const table = h('table', { class: 'stack' },
     h('thead', null, h('tr', null, h('th', null, '날짜'), h('th', null, '점심'), h('th', null, '카페'), h('th', null, '저녁·밤'))),
@@ -641,8 +604,8 @@ function renderMeals() {
   wrap.append(h('div', { class: 'grid grid-2', style: 'margin-top:14px' },
     h('div', { class: 'card' }, h('h4', { style: 'margin-top:0' }, '일요일 저녁 (하나만)'), segmented('sundayDinner'),
       h('p', { class: 'small' }, '아키요시: 1인 예약 불가 → 현장 방문 (19:00 전후 목표). 마루쇼: 예약하지 않음, 당일 선택. 지금 느낌으로는 아키요시가 더 끌림.')),
-    h('div', { class: 'card' }, h('h4', { style: 'margin-top:0' }, '월요일 점심'), segmented('mondayPlan'),
-      h('p', { class: 'small' }, 'A안이면 츠지한 후보 (대기가 길면 생략). B안이면 동선에서 해결 — 츠지한을 포기해도 됨.'))));
+    h('div', { class: 'card' }, h('h4', { style: 'margin-top:0' }, '월요일 점심'),
+      h('p', { class: 'small' }, '츠지한은 월요일 옵션입니다. 월요일 탭에서 “동선에 넣기”를 하면 여기에 점심으로 나옵니다. 대기가 길면 생략.'))));
   wrap.append(h('ul', { class: 'dots', style: 'margin-top:14px' }, MEAL_NOTES.map((m) => h('li', null, m))));
   return wrap;
 }

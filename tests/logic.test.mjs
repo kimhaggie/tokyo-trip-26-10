@@ -5,7 +5,7 @@ import { DAYS } from '../data/trip.js';
 import { PLACES } from '../data/places.js';
 import {
   defaultState, sanitizeState, parseStoredState, parseImport, exportPayload, computeRoute, itemStatus,
-  mondayKapitalForRoute, mapsDirectionsUrl, mapsSearchUrl, currentPlanItem, tokyoDateOf, shoppingEntries, mealTable, placeMap,
+  mapsDirectionsUrl, mapsSearchUrl, currentPlanItem, tokyoDateOf, shoppingEntries, mealTable, placeMap,
 } from '../assets/logic.js';
 
 const PM = placeMap(PLACES);
@@ -17,8 +17,8 @@ test('손상된 저장 데이터는 기본값으로 복구', () => {
   assert.deepEqual(parseStoredState('{not json').state, defaultState());
   assert.equal(parseStoredState('{not json').recovered, true);
   assert.equal(parseStoredState(JSON.stringify({ version: 99 })).recovered, true);
-  const s = sanitizeState({ version: 1, mondayPlan: 'C', sundayDinner: 'akiyoshi', visited: { lolo: true, '<img>': true, sml: 'yes' }, notes: { general: 123, luggage: 'B1' } });
-  assert.equal(s.mondayPlan, 'undecided');
+  const s = sanitizeState({ version: 1, artNight: 'maybe', sundayDinner: 'akiyoshi', visited: { lolo: true, '<img>': true, sml: 'yes' }, notes: { general: 123, luggage: 'B1' } });
+  assert.equal(s.artNight, 'undecided');
   assert.equal(s.sundayDinner, 'akiyoshi');
   assert.deepEqual(s.visited, { lolo: true });
   assert.deepEqual(s.notes, { luggage: 'B1' });
@@ -72,38 +72,25 @@ test('Day3: 아트 나이트 선택 / 캐피탈 월요일 이월', () => {
   assert.ok(stopIds(computeRoute(d, moved, PLACES)).includes('d3-kapital-naked'));
 });
 
-test('월요일 B안: 넘긴 매장 중 미방문만, 토요일 방문 매장은 중복하지 않음', () => {
-  const s = S({ kapitalToMonday: { 'kapital-legs': true, 'kapital-naked': true }, visited: { 'kapital-naked': true } });
-  assert.deepEqual(mondayKapitalForRoute(s), ['kapital-legs']);
-  const r = computeRoute(day('2026-11-02'), { ...s, mondayPlan: 'B' }, PLACES);
-  const places = r.stops.map((x) => x.place.id);
-  assert.ok(places.includes('kapital-legs'));
-  assert.ok(!places.includes('kapital-naked'));
-  assert.ok(!places.includes('kapital-duffle'));
-  assert.ok(!places.includes('tsujihan-nihonbashi'), 'B안에 츠지한 없음');
-  assert.equal(places[0], 'rose-stay-shiba-park');
-  assert.equal(places.filter((p) => p === 'rose-stay-shiba-park').length, 1, '호텔 재방문 없음');
-  assert.equal(places.at(-1), 'tokyo-station');
-  assert.equal(r.airportLegs[0].other.place.id, 'tokyo-station');
-  // 빈 보충 목록도 정상 — 못 본 매장 3곳은 ? 후보로 보인다
-  const empty = computeRoute(day('2026-11-02'), S({ mondayPlan: 'B' }), PLACES);
-  assert.ok(empty.stops.length >= 3);
-  assert.deepEqual(empty.floating.map((f) => f.place.id).filter((id) => id.startsWith('kapital-') && id !== 'kapital-ginza').sort(), ['kapital-duffle', 'kapital-legs', 'kapital-naked']);
-  // 토요일에 본 매장은 후보에도 안 나온다
-  const seen = computeRoute(day('2026-11-02'), S({ mondayPlan: 'B', visited: { 'kapital-naked': true } }), PLACES);
-  assert.ok(!seen.floating.some((f) => f.place.id === 'kapital-naked'));
-  // A안에서는 후보를 보이지 않는다
-  assert.ok(!computeRoute(day('2026-11-02'), S({ mondayPlan: 'A' }), PLACES).floating.some((f) => f.place.id === 'kapital-legs'));
+test('월요일: 기본은 짐 보관 → 회수만, 옵션은 넣은 것만 순서대로', () => {
+  const d = day('2026-11-02');
+  const base = computeRoute(d, S(), PLACES);
+  assert.deepEqual(base.stops.map((x) => x.place.id), ['rose-stay-shiba-park', 'tokyo-station', 'tokyo-station', 'tokyo-station']);
+  assert.equal(base.floating.length, 0, '옵션은 꺼진 상태로 시작');
+  assert.equal(base.airportLegs[0].other.place.id, 'tokyo-station');
+  const all = Object.fromEntries(d.items.filter((i) => i.priority === 'optional').map((i) => [i.id, true]));
+  const r = computeRoute(d, S({ selectedOptions: all }), PLACES).stops.map((x) => x.place.id);
+  assert.deepEqual(r, ['rose-stay-shiba-park', 'tokyo-station', 'tsujihan-nihonbashi', 'kapital-naked', 'kapital-legs', 'kapital-duffle', 'uniqlo-ginza', 'kapital-ginza', 'itoya-ginza', 'tokyo-station', 'tokyo-station']);
+  assert.equal(r.filter((p) => p === 'rose-stay-shiba-park').length, 1, '호텔 재방문 없음');
 });
 
-test('월요일 미정이면 A/B를 이어 그리지 않는다', () => {
-  const r = computeRoute(day('2026-11-02'), S(), PLACES);
-  const places = r.stops.map((x) => x.place.id);
-  assert.ok(!places.includes('tsujihan-nihonbashi'));
-  assert.ok(!places.includes('itoya-ginza'));
-  assert.ok(r.floating.some((f) => f.place.id === 'tsujihan-nihonbashi'));
-  const a = computeRoute(day('2026-11-02'), S({ mondayPlan: 'A' }), PLACES).stops.map((x) => x.place.id);
-  assert.deepEqual(a.slice(0, 4), ['rose-stay-shiba-park', 'tokyo-station', 'tsujihan-nihonbashi', 'itoya-ginza']);
+test('토요일 “월요일로 넘기기”는 토요일 동선에서만 빼고 월요일 옵션과는 무관', () => {
+  const s = S({ kapitalToMonday: { 'kapital-legs': true }, visited: { 'kapital-naked': true } });
+  assert.ok(!stopIds(computeRoute(day('2026-10-31'), s, PLACES)).includes('d3-kapital-legs'));
+  const mon = computeRoute(day('2026-11-02'), s, PLACES);
+  assert.ok(!mon.stops.some((x) => x.place.id === 'kapital-legs'), '넘겨도 자동으로 넣지 않음');
+  const picked = computeRoute(day('2026-11-02'), { ...s, selectedOptions: { 'd5-kapital-naked': true } }, PLACES);
+  assert.ok(picked.stops.some((x) => x.place.id === 'kapital-naked'), '토요일에 봤어도 월요일 옵션으로 고를 수 있음');
 });
 
 test('일요일 저녁: 미정이면 두 곳을 잇지 않고, 고르면 그곳으로 끝난다', () => {
@@ -168,5 +155,6 @@ test('쇼핑·식사 목록이 같은 상태를 따른다', () => {
   const und = mealTable(DAYS, S()).find((m) => m.date === '2026-11-01');
   assert.equal(und.dinner.length, 2);
   assert.ok(und.dinner.every((x) => x.status === 'floating'));
-  assert.equal(itemStatus(DAYS[4].items.find((i) => i.id === 'd5a-tsujihan'), DAYS[4], S({ mondayPlan: 'B' })), 'hidden');
+  assert.equal(itemStatus(DAYS[4].items.find((i) => i.id === 'd5-tsujihan'), DAYS[4], S()), 'hidden');
+  assert.equal(itemStatus(DAYS[4].items.find((i) => i.id === 'd5-tsujihan'), DAYS[4], S({ selectedOptions: { 'd5-tsujihan': true } })), 'active');
 });

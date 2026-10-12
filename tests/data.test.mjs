@@ -108,14 +108,18 @@ test('일요일: 축제 17시 종료 경고 · 아키요시/마루쇼 양자택�
   assert.ok(!sun.items.some((i) => i.kapitalEbisu || /KAPITAL/i.test(i.title)), '일요일에 캐피탈 없음');
 });
 
-test('월요일: A/B는 대안 · 호텔 재방문 없음 · 도쿄역 회수', () => {
+test('월요일: 고정은 짐 보관·회수·N\'EX, 나머지는 모두 꺼진 옵션 · 호텔 재방문 없음', () => {
   const mon = day('2026-11-02').items;
   const hotelVisits = mon.filter((i) => i.placeId === 'rose-stay-shiba-park');
   assert.equal(hotelVisits.length, 1, '체크아웃만');
   assert.equal(hotelVisits[0].id, 'd5-checkout');
   assert.ok(mon.some((i) => i.luggage === 'drop' && i.placeId === 'tokyo-station'));
   assert.ok(mon.some((i) => i.luggage === 'pick' && i.placeId === 'tokyo-station'));
-  assert.ok(mon.filter((i) => i.variant === 'A').length > 0 && mon.filter((i) => i.variant === 'B').length > 0);
+  assert.ok(!mon.some((i) => i.variant), 'A/B안 없음');
+  const opts = mon.filter((i) => i.priority === 'optional').map((i) => i.placeId);
+  assert.deepEqual(opts, ['tsujihan-nihonbashi', 'kapital-naked', 'kapital-legs', 'kapital-duffle', 'uniqlo-ginza', 'kapital-ginza', 'itoya-ginza'], '옵션 순서: 츠지한 → 에비스 → 긴자');
+  const core = mon.filter((i) => i.priority === 'core').map((i) => i.id);
+  assert.deepEqual(core, ['d5-checkout', 'd5-luggage-drop', 'd5-luggage-pick', 'd5-nex', 'd5-depart']);
   assert.ok(!mon.some((i) => i.kind === 'cafe'), '월요일 킷사텐 없음');
   assert.equal(item('d5-nex').reservation.status, 'not_reserved');
 });

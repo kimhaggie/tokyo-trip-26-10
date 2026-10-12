@@ -6,7 +6,6 @@ export const STATE_VERSION = 1;
 const ALLOWED = {
   sundayDinner: ['undecided', 'akiyoshi', 'marusho'],
   jimbochoOrder: ['undecided', 'cafe-first', 'books-first'],
-  mondayPlan: ['undecided', 'A', 'B'],
   artNight: ['undecided', 'go', 'skip'],
   viewMode: ['timeline', 'detail'],
 };
@@ -16,7 +15,6 @@ export function defaultState() {
     version: STATE_VERSION,
     sundayDinner: 'undecided',
     jimbochoOrder: 'undecided',
-    mondayPlan: 'undecided',
     artNight: 'undecided',
     viewMode: 'timeline',
     showOptions: {}, // date -> bool (지도·일정표에 옵션 표시)
@@ -131,29 +129,11 @@ export function kapitalEbisuVisits(days) {
   return sat ? sat.items.filter((i) => i.kapitalEbisu) : [];
 }
 
-// 월요일 B안 보충 대상: 토요일에 “월요일로 넘기기”했고 아직 방문 완료가 아닌 에비스 캐피탈.
-export function mondayKapitalPlaceIds(days, state) {
-  return kapitalEbisuVisits(days)
-    .map((i) => i.placeId)
-    .filter((id) => state.kapitalToMonday[id] && !state.visited[id]);
-}
-
-// 토요일에 아직 체크되지 않은(방문 완료도, 이월도 아닌) 에비스 캐피탈 — 안내용.
-export function kapitalUnresolved(days, state) {
-  return kapitalEbisuVisits(days)
-    .map((i) => i.placeId)
-    .filter((id) => !state.visited[id] && !state.kapitalToMonday[id]);
-}
-
 // 아이템이 현재 선택 상태에서 어떤 상태인지:
 //  'active'   — 동선에 포함
 //  'floating' — 위치만 보여 주고 선으로 잇지 않음 (미정 선택지, 미선택 옵션)
 //  'hidden'   — 표시하지 않음 (생략·다른 안 선택·이월)
 export function itemStatus(item, day, state) {
-  if (item.variant) {
-    if (state.mondayPlan === 'undecided') return 'floating';
-    if (state.mondayPlan !== item.variant) return 'hidden';
-  }
   if (item.kapitalEbisu && state.kapitalToMonday[item.placeId]) return 'hidden';
   if (item.choice) {
     const v = state[item.choice.group];
@@ -199,19 +179,6 @@ export function computeRoute(day, state, places) {
   const items = orderedItems(day, state);
   const expanded = [];
   for (const item of items) {
-    if (item.kapitalMakeup) {
-      const st = itemStatus(item, day, state);
-      for (const pid of mondayKapitalForRoute(state)) {
-        expanded.push({ item: { ...item, id: `${item.id}-${pid}`, placeId: pid }, status: st });
-      }
-      // B안을 골랐을 때 아직 보지도 넘기지도 않은 매장은 후보(?)로 보여 준다
-      if (st === 'active') {
-        for (const pid of KAPITAL_EBISU_IDS.filter((id) => !state.visited[id] && !state.kapitalToMonday[id])) {
-          expanded.push({ item: { ...item, id: `${item.id}-${pid}`, placeId: pid, title: '에비스 KAPITAL 보충 후보' }, status: 'floating' });
-        }
-      }
-      continue;
-    }
     let status = itemStatus(item, day, state);
     // 앞선 선택이 미정이면 그 뒤 구간은 잇지 않는다 (예: 일요일 저녁·숙소 복귀)
     if (status === 'active' && item.routeNeeds && item.routeNeeds.some((g) => state[g] === 'undecided')) status = 'floating';
@@ -288,12 +255,7 @@ export function computeRoute(day, state, places) {
   return { stops, points, floating, missing, markers, segments, airportLegs };
 }
 
-// B안 보충 매장 (가상의 days 없이 placeId 목록만 필요)
-const KAPITAL_EBISU_IDS = ['kapital-naked', 'kapital-legs', 'kapital-duffle'];
-export function mondayKapitalForRoute(state) {
-  return KAPITAL_EBISU_IDS.filter((id) => state.kapitalToMonday[id] && !state.visited[id]);
-}
-export { KAPITAL_EBISU_IDS };
+export const KAPITAL_EBISU_IDS = ['kapital-naked', 'kapital-legs', 'kapital-duffle'];
 
 // 구간별 길찾기용 연속 쌍 (같은 장소 연속은 건너뜀)
 export function routeLegs(route) {
